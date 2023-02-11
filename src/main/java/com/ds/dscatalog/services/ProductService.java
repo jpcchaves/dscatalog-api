@@ -1,7 +1,10 @@
 package com.ds.dscatalog.services;
 
+import com.ds.dscatalog.dto.CategoryDTO;
 import com.ds.dscatalog.dto.ProductDTO;
+import com.ds.dscatalog.entities.Category;
 import com.ds.dscatalog.entities.Product;
+import com.ds.dscatalog.repositories.CategoryRepository;
 import com.ds.dscatalog.repositories.ProductRepository;
 import com.ds.dscatalog.services.exceptions.DatabaseException;
 import com.ds.dscatalog.services.exceptions.ResourceNotFoundException;
@@ -22,6 +25,9 @@ public class ProductService {
     @Autowired
     private ProductRepository repository;
 
+    @Autowired
+    private CategoryRepository categoryRepository;
+
     @Transactional(readOnly = true)
     public Page<ProductDTO> findAllPaged(PageRequest pageRequest) {
         Page<Product> list = repository.findAll(pageRequest);
@@ -41,7 +47,10 @@ public class ProductService {
     public ProductDTO insert(ProductDTO dto) {
 
         Product entity = new Product();
-        entity.setName(dto.getName());
+
+        copyDtoToEntity(dto, entity);
+
+
         entity = repository.save(entity);
         return new ProductDTO(entity);
 
@@ -52,7 +61,8 @@ public class ProductService {
         try {
 
             Product entity = repository.getReferenceById(id);
-            entity.setName(dto.getName());
+            copyDtoToEntity(dto, entity);
+
             entity = repository.save(entity);
 
             return new ProductDTO(entity);
@@ -70,6 +80,24 @@ public class ProductService {
             throw new ResourceNotFoundException("Não foi possível excluir a categoria pois o ID informado não existe: " + id);
         } catch (DataIntegrityViolationException e) {
             throw new DatabaseException("Não foi possível deletar a categoria pois acarretaria em uma inconsistência na integridade do banco de dados");
+        }
+    }
+
+    private void copyDtoToEntity(ProductDTO dto, Product entity) {
+        entity.setName(dto.getName());
+        entity.setDescription(dto.getDescription());
+        entity.setPrice(dto.getPrice());
+        entity.setImgUrl(dto.getImgUrl());
+        entity.setDate(dto.getDate());
+
+        entity.getCategories().clear();
+
+        for (CategoryDTO categoryDTO : dto.getCategories()) {
+
+            Category category = categoryRepository.getReferenceById(categoryDTO.getId());
+
+            entity.getCategories().add(category);
+
         }
     }
 }
